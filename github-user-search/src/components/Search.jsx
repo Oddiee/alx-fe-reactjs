@@ -12,15 +12,18 @@ const Search = () => {
   const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [hasSearched, setHasSearched] = useState(false);
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
+    const name = e.target.name;
+    const value = e.target.value;
     setSearchParams((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setPage(1);
+    setHasSearched(true);
     await performSearch();
   };
 
@@ -29,20 +32,25 @@ const Search = () => {
     setError(null);
     try {
       const results = await searchUsers({ ...searchParams, page });
-      const detailedResults = await Promise.all(
-        results.items.map(async (user) => {
-          const details = await fetchUserData(user.login);
-          return { ...user, ...details };
-        })
-      );
-      if (page === 1) {
-        setSearchResults(detailedResults);
+      if (results.items.length === 0) {
+        setError("Looks like we cant find the user");
+        setSearchResults([]);
       } else {
-        setSearchResults((prev) => [...prev, ...detailedResults]);
+        const detailedResults = await Promise.all(
+          results.items.map(async (user) => {
+            const details = await fetchUserData(user.login);
+            return { ...user, ...details };
+          })
+        );
+        if (page === 1) {
+          setSearchResults(detailedResults);
+        } else {
+          setSearchResults((prev) => [...prev, ...detailedResults]);
+        }
+        setHasMore(results.items.length === 30); // Assuming 30 is the per_page value
       }
-      setHasMore(results.items.length === 30); // Assuming 30 is the per_page value
     } catch (err) {
-      setError("An error occurred while searching for users");
+      setError("Looks like we cant find the user");
     } finally {
       setLoading(false);
     }
